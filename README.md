@@ -1,7 +1,6 @@
 # cozyasm
 
 ### planned
-- [ ] at least a couple instructions
+- [x] construct IRTree generator
 - [ ] interpreter in js
-- [ ] interpreter in py
 - [ ] option to compile to [lux](https://github.com/obscuredc/lux)
