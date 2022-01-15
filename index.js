@@ -2,7 +2,7 @@ const Numbers = "0123456789";
 const Letters = "qwertyuioplkjhgfdsaxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM";
 const Symbols = ".:";
 const Whitespace = " \t";
-const idxresolve = "0123456789rmx&"
+const idxresolve = "0123456789rmxp&"
 
 const TT_INT = "token_int";
 const TT_SYMBOL = "token_symbol";
@@ -161,7 +161,9 @@ class LineAssigner {
     }
     Main() {
         this.Continue();
+        this.Continue();
         while (this.index < this.text.length && this.cc != TT_EOF) {
+            if(this.cc.Type == TT_EOF) break;
             if(this.cc.Value[0].Type == TT_STRING) {
                 this.tokens.push(new Token(TT_NORMALEXPR, this.cc.Value))
             } else if (this.cc.Value[0].Type == TT_SYMBOL && this.cc.Value.some(obj => obj['Type'] == TT_PLIKE)) {
@@ -175,6 +177,144 @@ class LineAssigner {
         }
         this.tokens.push(new Token(TT_EOF, TT_EOF));
         return this.tokens;
+    }
+}
+function ParseFN(Token) {
+    var m = "";
+    for(i = 0; i < Token.Value.length; i++) {
+        m+=Token.Value[i].Value.toString();
+    }
+    //now m is the path thing.
+    m = m.replace(/\./g, "")
+    m = m.replace(/:/g, "");
+    let isComplex = false;
+    if(m.includes("subr")) {
+        isComplex = true;
+        let IndexOfP = m.indexOf('p');
+        let number = "";
+        let i = IndexOfP + 1;
+        while (i < m.length) {
+            if(Numbers.includes(m[i])) {
+                number += m[i];
+            } else {
+                break;
+            }
+            i++;
+        }
+        let name = "";
+        while (i < m.length) {
+            if (Letters.includes(m[i])) {
+                name += m[i];
+            } else if (Whitespace.includes(m[i])) {
+                continue;
+            } else {
+                break;
+            }
+            i++;
+        }
+        var Name = name;
+        var P = parseInt(number);
+    } else {
+        var Name = m;
+        var P = 0;
+    }
+    return {
+        Name: Name,
+        P: P,
+        IsComplex: isComplex
+    };
+}
+
+class IRBuilder1 { //sets up commands
+    constructor(text) {
+        this.text = text;
+        this.index = -1;
+        this.cc = "";
+        this.tokens = [];
+    }
+    Continue() {
+        this.index++;
+        this.cc = this.text[this.index];
+    }
+    Main() {
+        this.Continue();
+        while (this.index < this.text.length) {
+            if(this.cc.Type == TT_NORMALEXPR) {
+                //setup
+                let temp_cmd = new IR_COMMAND("", []);
+                temp_cmd.Name = this.cc.Value[0];
+                var i;
+                for(i=1;i<this.cc.Value.length;i++) {
+                    if(this.cc.Value[i].Type == TT_ARGS) {
+                        continue; //dont push commas
+                    } else {
+                        temp_cmd.Parameters.push(this.cc.Value[i].Value);
+                    }
+                }
+                this.tokens.push(temp_cmd);
+            } else {
+                //its a function, functions are setup in IRBuilder2.
+                this.tokens.push(this.cc);
+            }
+            this.Continue();
+        }
+        return this.tokens;
+    }
+}
+class IRBuilder2 { //organizes into functions for endl
+    constructor(text) {
+        this.text = text;
+        this.index = -1;
+        this.cc = "";
+        this.tokens = [];
+    }
+    Continue() {
+        this.index++;
+        this.cc = this.text[this.index];
+    }
+    Main() {
+        this.Continue();
+        while (this.index < this.text.length) {
+            if(this.cc.Type == TT_FNDAEXPR) {
+                let Name = ParseFN(this.cc).Name;
+                let P = ParseFN(this.cc).P;
+                let FN = new IR_FN(Name, P, []);
+                this.Continue();
+                while(this.cc instanceof IR_COMMAND && this.cc.Name != "lbl" && this.cc.Name != "endl") {
+                    FN.Callstack.push(this.cc);
+                    this.Continue();
+                }
+                this.tokens.push(FN);
+            } else if (this.cc.Type == TT_FNDEXPR) {
+                //label expression, really
+                this.tokens.push(new IR_COMMAND("lbl", [ParseFN(this.cc).Name]))
+            } else {
+                this.tokens.push(this.cc);
+            }
+            this.Continue();
+        }
+        return this.tokens;
+    }
+}
+
+class IR_COMMAND {
+    constructor(Name, Parameters) {
+        this.Name = Name;
+        this.Parameters = Parameters;
+    }
+    toString() {
+        return `Command ${this.Name}::(${this.Parameters.join(", ")})`;
+    }
+}
+
+class IR_FN {
+    constructor(Name, P, Callstack) {
+         this.Name = Name;
+         this.P = P;
+         this.Callstack = Callstack;
+    }
+    toString() {
+        return `Function ${this.Name}[p${this.P.toString()}]::{${this.Callstack.join("\n")}}`;
     }
 }
 
@@ -195,11 +335,30 @@ function Main(T) {
     var lined_tokens = lineassigner.Main();
     console.log("---formatted lined tokens---");
     lined_tokens.forEach((v) => { console.log(v.toString()) })
+    var ir1 = new IRBuilder1(lined_tokens);
+    var ir1_tok = ir1.Main();
+    console.log("---ir1 tokens---");
+    ir1_tok.forEach((v) => { console.log(v.toString()) })
+    var ir2 = new IRBuilder2(ir1_tok);
+    var ir2_tok = ir2.Main();
+    console.log("---ir2 tokens---");
+    ir2_tok.forEach((v) => { console.log(v.toString()) })
+
+    return lined_tokens
 }
 
-/** Unit tests */
-Main(`.main:
+Main(`
+.main:
     mov &r1,20
     kill m20
     endl
-`)
+.subr p0 complexfunction:
+    lol &r90,m30,33
+    endl
+`);
+
+/**
+ * 
+ * .NAME: -> LABELS
+ * .subr p0 NAME: -> SUBROUTINE
+ */
