@@ -2,7 +2,8 @@ const Numbers = "0123456789";
 const Letters = "qwertyuioplkjhgfdsaxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM";
 const Symbols = ".:";
 const Whitespace = " \t";
-const idxresolve = "0123456789rmxp&"
+const idxresolve = "0123456789rmxp&";
+const StringResolve = "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM.:0123456789_ \"";
 
 const TT_INT = "token_int";
 const TT_SYMBOL = "token_symbol";
@@ -54,6 +55,9 @@ class Lexer {
             } else if (this.cc == "\n") {
                 this.tokens.push(new Token(TT_NEWLINE, TT_NEWLINE));
                 this.Continue();
+            } else if(this.cc == "\"") {
+                this.BuildStringLike();
+                this.Continue();
             }
             else if (Letters.includes(this.cc)) this.BuildStrlike();
             else this.Continue(); //ignore anything we dont know
@@ -76,6 +80,18 @@ class Lexer {
             t += this.cc;
             this.Continue();
         }
+        this.tokens.push(new Token(TT_STRING, t));
+    }
+    BuildStringLike() {
+        var t = "";
+        while (StringResolve.includes(this.cc)) {
+            t += this.cc;
+            this.Continue();
+            if(this.cc == "\"") {
+                break;
+            }
+        }
+        t = t.substring(1, t.length);
         this.tokens.push(new Token(TT_STRING, t));
     }
     BuildParameterLike() {
@@ -317,8 +333,8 @@ class IR_FN {
         return `Function ${this.Name}[p${this.P.toString()}]::{${this.Callstack.join("\n")}}`;
     }
 }
-
-function Main(T) {
+//given raw text T, generate the IR tokens ir_tok2. Returns an array of IR tokens.
+function CompileIR(T) {
     var lexer = new Lexer(T);
     var tokens = lexer.Main();
     console.log("---tokens---\n")
@@ -344,7 +360,7 @@ function Main(T) {
     console.log("---ir2 tokens---");
     ir2_tok.forEach((v) => { console.log(v.toString()) })
 
-    return lined_tokens
+    return ir2_tok;
 }
 
 Main(`
@@ -352,6 +368,7 @@ Main(`
     mov &r1,20
     kill m20
     endl
+    pro "KIT EPIC AMONGUS::"
 .subr p0 complexfunction:
     lol &r90,m30,33
     endl
