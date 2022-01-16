@@ -360,6 +360,12 @@ function CompileIR(T) {
     console.log("---ir2 tokens---");
     ir2_tok.forEach((v) => { console.log(v.toString()) })
 
+    for(const c of ir2_tok) {
+        if(c instanceof IR_COMMAND) {
+            c.Name = c.Name.Value;
+        }
+    }
+
     return ir2_tok;
 }
 
@@ -382,10 +388,10 @@ class ENV {
         this.subrs = [];
     }
     getRegister(id) {
-        return this.registers.find((v) => v.id == id);
+        return this.registers.find((v) => v.ID == id);
     }
     getMemory(id) {
-        return this.memory.find((v) => v.id == id);
+        return this.memory.find((v) => v.ID == id);
     }
     resolve(T) {
         if (T[0] == '&') {
@@ -420,25 +426,30 @@ class Command {
         this.call = Call; //function, accepts p as array of args
     }
 }
-
+/** These are the builtins. */
 const defaults = [
     new Command("mov", (p, env) => {
-        env.getMemory(p[0]).Value = p[1];
+        console.log(p);
+        env.resolve(p[0]).Value = p[1];
     }),
     new Command("ralloc", (p, env) => {
-        env.createRegister();
+        var i = 0;
+        while(i < (parseInt(p[0]) +1)) {
+            env.createRegister();
+            i++;
+        }
     })
 ];
 
 class Runner {
-    constructor(IR, env) {
+    constructor(IR, env, cpkg) {
         this.ir = IR;
         this.index = -1;
         this.cc = "";
         this.tokens = [];
         this.env = env;
 
-        this.cpkg = [];
+        this.cpkg = cpkg;
     }
     Continue() {
         this.index++;
@@ -468,25 +479,20 @@ class Runner {
 
 function interpret(IR) {
     var env = new ENV();
-    var runner = new Runner(IR, env);
+    var runner = new Runner(IR, env, defaults);
     return runner.Main();
 }
 
 function NativeRun(T) {
     var IR = CompileIR(T);
     var res_env = interpret(IR);
+    console.log(res_env);
     return res_env;
 }
 
 NativeRun(`
-.main:
-    mov &r1,20
-    kill m20
-    endl
-    pro "KIT EPIC AMONGUS::"
-.subr p0 complexfunction:
-    lol &r90,m30,33
-    endl
+    ralloc 1
+    mov &r0,10
 `);
 
 /**
