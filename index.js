@@ -398,17 +398,19 @@ class ENV {
             //index value, return the Object
             switch (T[1]) {
                 case "r":
-                    return this.getRegister(parseInt(T.substr(2, T.length - 2)))
+                    return this.getRegister(parseInt(T.substr(2, T.length - 1)))
                 case "m":
-                    return this.getMemory(parseInt(T.substr(2, T.length - 2)))
+                    return this.getMemory(parseInt(T.substr(2, T.length - 1)))
             }
-        } else {
+        } else if (T[0] == "r" || T[0] == "m") {
             switch (T[0]) {
                 case "r":
-                    return this.getRegister(parseInt(T.substr(1, T.length - 2))).Value;
+                    return this.getRegister(parseInt(T.substr(1, T.length - 1))).Value;
                 case "m":
-                    return this.getMemory(parseInt(T.substr(1, T.length - 2))).Value;
+                    return this.getMemory(parseInt(T.substr(1, T.length - 1))).Value;
             }
+        } else {
+            return parseInt(T);
         }
     }
     createRegister() {
@@ -430,12 +432,19 @@ class Command {
 const defaults = [
     new Command("mov", (p, env) => {
         console.log(p);
-        env.resolve(p[0]).Value = p[1];
+        env.resolve(p[0]).Value = env.resolve(p[1]);
     }),
     new Command("ralloc", (p, env) => {
         var i = 0;
-        while(i < (parseInt(p[0]) +1)) {
+        while(i < (parseInt(env.resolve(p[0])) +1)) {
             env.createRegister();
+            i++;
+        }
+    }),
+    new Command("malloc", (p, env) => {
+        var i = 0;
+        while (i < (parseInt(env.resolve(p[0])) + 1)) {
+            env.createMemory();
             i++;
         }
     })
@@ -491,8 +500,6 @@ function NativeRun(T) {
 }
 
 NativeRun(`
-    ralloc 1
-    mov &r0,10
 `);
 
 /**
