@@ -363,7 +363,15 @@ function CompileIR(T) {
     return ir2_tok;
 }
 
-Main(`
+const intr = require("./interpret.js")
+
+function NativeRun(T) {
+    var IR = CompileIR(T);
+    var res_env = intr.execute(IR);
+    return res_env;
+}
+
+NativeRun(`
 .main:
     mov &r1,20
     kill m20
