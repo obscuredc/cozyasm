@@ -296,10 +296,11 @@ class IRBuilder2 { //organizes into functions for endl
                 let P = ParseFN(this.cc).P;
                 let FN = new IR_FN(Name, P, []);
                 this.Continue();
-                while(this.cc instanceof IR_COMMAND && this.cc.Name != "lbl" && this.cc.Name != "endl") {
+                while(this.cc instanceof IR_COMMAND && this.cc.Name.Value != "lbl" && this.cc.Name.Value != "endl") {
                     FN.Callstack.push(this.cc);
                     this.Continue();
                 }
+                FN.Callstack.push(new IR_COMMAND(new Token(TT_STRING, "endl"), []));
                 this.tokens.push(FN);
             } else if (this.cc.Type == TT_FNDEXPR) {
                 //label expression, really
@@ -330,7 +331,7 @@ class IR_FN {
          this.Callstack = Callstack;
     }
     toString() {
-        return `Function ${this.Name}[p${this.P.toString()}]::{${this.Callstack.join("\n")}}`;
+        return `Function ${this.Name}[p${this.P.toString()}]::{\n\t${this.Callstack.join("\n\t")}\n}`;
     }
 }
 //given raw text T, generate the IR tokens ir_tok2. Returns an array of IR tokens.
@@ -349,15 +350,15 @@ function CompileIR(T) {
     lined_tokens.forEach((v) => { console.log(v.toString()) })
     var lineassigner = new LineAssigner(lined_tokens);
     var lined_tokens = lineassigner.Main();
-    console.log("---formatted lined tokens---");
+    console.log("---formatted lined tokens---\n");
     lined_tokens.forEach((v) => { console.log(v.toString()) })
     var ir1 = new IRBuilder1(lined_tokens);
     var ir1_tok = ir1.Main();
-    console.log("---ir1 tokens---");
+    console.log("---ir1 tokens---\n");
     ir1_tok.forEach((v) => { console.log(v.toString()) })
     var ir2 = new IRBuilder2(ir1_tok);
     var ir2_tok = ir2.Main();
-    console.log("---ir2 tokens---");
+    console.log("---ir2 tokens---\n");
     ir2_tok.forEach((v) => { console.log(v.toString()) })
 
     for(const c of ir2_tok) {
@@ -431,7 +432,6 @@ class Command {
 /** These are the builtins. */
 const defaults = [
     new Command("mov", (p, env) => {
-        console.log(p);
         env.resolve(p[0]).Value = env.resolve(p[1]);
     }),
     new Command("ralloc", (p, env) => {
@@ -495,12 +495,14 @@ function interpret(IR) {
 function NativeRun(T) {
     var IR = CompileIR(T);
     var res_env = interpret(IR);
-    console.log(res_env);
     return res_env;
 }
 
-NativeRun(`
-`);
+const fs = require('fs');
+
+fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
+ralloc 0
+`), null, 5));
 
 /**
  * 

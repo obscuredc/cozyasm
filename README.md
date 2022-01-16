@@ -23,7 +23,7 @@ list of implemented flags:
 ### instruction set
 this set can, and will, change many times! 
 
-- [ ] mov
+- [x] mov
 - [ ] add
 - [ ] sub
 - [ ] mul
@@ -44,5 +44,5 @@ this set can, and will, change many times!
 - [ ] load
 - [ ] store
 - [ ] rad
-- [ ] ralloc
-- [ ] malloc
+- [x] ralloc
+- [x] malloc
