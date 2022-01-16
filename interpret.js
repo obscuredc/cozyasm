@@ -49,30 +49,60 @@ class ENV {
         this.memoryid++;
     }
 }
-class Runner {
-    constructor(IR, env) {
-        this.ir = ir;
-        this.index = -1;
-        this.cc = "";
-        this.tokens = [];
-    }
-    Continue() {
-        this.index++;
-        this.cc = this.text[this.index];
-    }
-    Main() {
-        this.Continue();
-        while (this.index < this.text.length) {
-            if(this.cc instanceof IR_COMMAND) {
-
-            } //aka we ignore function declarations.
-            this.Continue();
-        }
-        return this.tokens;
+class Command {
+    constructor(Name, Call) {
+        this.Name = Name; //name of function to be called when in code
+        this.call = Call; //function, accepts p as array of args
     }
 }
 
-module.exports.execute = function(IR) {
+const defaults = [
+new Command("mov", (p, env) => {
+    env.getMemory(p[0]).Value = p[1];
+}),
+new Command("ralloc", (p, env) => {
+    env.createRegister();
+})
+];
+
+class Runner {
+    constructor(IR, env) {
+        this.ir = IR;
+        this.index = -1;
+        this.cc = "";
+        this.tokens = [];
+        this.env = env;
+
+        this.cpkg = [];
+    }
+    Continue() {
+        this.index++;
+        this.cc = this.ir[this.index];
+    }
+    getCommand(Name) {
+        return this.cpkg.find((v) => v.Name == Name);
+    }
+    callCommand(Name, Parameters) {
+        this.getCommand(Name).call(Parameters, this.env);
+    }
+    Main() {
+        this.Continue();
+        while (this.index < this.ir.length) {
+            if(this.cc instanceof IR_COMMAND) {
+                if(this.getCommand(this.cc.Name) != undefined) {
+                    this.callCommand(this.cc.Name, this.cc.Parameters);
+                } else {
+                    //invalid command, we'll do errors later.
+                }
+            } //aka we ignore function declarations.
+            this.Continue();
+        }
+        return this.env;
+    }
+}
+
+function interpret(IR) {
     var env = new ENV();
-    var runner = Runner(IR);
+    var runner = new Runner(IR, env);
+    return runner.Main();
 }
