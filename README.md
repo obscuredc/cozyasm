@@ -44,6 +44,6 @@ this set can, and will, change many times!
 - [ ] end
 - [ ] load
 - [ ] store
-- [ ] rad
+- [x] rad
 - [x] ralloc
 - [x] malloc

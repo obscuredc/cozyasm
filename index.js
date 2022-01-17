@@ -500,6 +500,12 @@ const defaults = [
         if (!value1 <= value2) {
             ii.index++;
         }
+    }),
+    new Command("rad", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0])).toString();
+        let value2 = parseInt(env.resolve(p[1])).toString();
+        let res_idx = env.resolve(p[2]);
+        res_idx.Value = parseInt(value1 + value2);
     })
 ];
 
@@ -555,9 +561,8 @@ const fs = require('fs');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
 ralloc 0
-mov &r0,10
-iflt r0,11
-mov &r0,1
+mov &r0, 89
+rad r0, 100,&r0
 `), null, 5));
 
 /**
