@@ -506,6 +506,22 @@ const defaults = [
         let value2 = parseInt(env.resolve(p[1])).toString();
         let res_idx = env.resolve(p[2]);
         res_idx.Value = parseInt(value1 + value2);
+    }),
+    new Command("import", (p, env, ii) => {
+        let filename = p[0]; //const::String s cannot be resolved
+        let content = "callasImport\n" + fs.readFileSync(filename, "utf-8");
+        console.log(content[content.length -1])
+        if(content[content.length - 1] != "\n") content += "\n"; //hacky solution lol
+        env = SubRun(content, env);
+    }),
+    new Command("callasImport", (p, env, ii) => {
+        //this does nothing. it just placeholds.
+    }),
+    new Command("load", (p, env, ii) => {
+        env.resolve(p[1]).Value = env.resolve("m" + p[0].toString());
+    }),
+    new Command("store", (p, env, ii) => {
+        env.resolve("&m" + p[0].toString()).Value = env.resolve(p[1]);
     })
 ];
 
@@ -545,8 +561,7 @@ class Runner {
     }
 }
 
-function interpret(IR) {
-    var env = new ENV();
+function interpret(IR, env=new ENV()) {
     var runner = new Runner(IR, env, defaults);
     return runner.Main();
 }
@@ -557,12 +572,20 @@ function NativeRun(T) {
     return res_env;
 }
 
+//Future implementation notes:
+//  it is VITAL that function and labels are stored in enviorments.
+//  this is so subrunning will save it between "images" of envs.
+
+function SubRun(T, cenv) {
+    let IR = CompileIR(T);
+    let res_env = interpret(IR, cenv);
+    return res_env;
+}
+
 const fs = require('fs');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
-ralloc 0
-mov &r0, 89
-rad r0, 100,&r0
+import "ex"
 `), null, 5));
 
 /**
