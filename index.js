@@ -431,21 +431,74 @@ class Command {
 }
 /** These are the builtins. */
 const defaults = [
-    new Command("mov", (p, env) => {
+    new Command("mov", (p, env, ii) => {
         env.resolve(p[0]).Value = env.resolve(p[1]);
     }),
-    new Command("ralloc", (p, env) => {
+    new Command("ralloc", (p, env, ii) => {
         var i = 0;
         while(i < (parseInt(env.resolve(p[0])) +1)) {
             env.createRegister();
             i++;
         }
     }),
-    new Command("malloc", (p, env) => {
+    new Command("malloc", (p, env, ii) => {
         var i = 0;
         while (i < (parseInt(env.resolve(p[0])) + 1)) {
             env.createMemory();
             i++;
+        }
+    }),
+    new Command("nlin", (p, env, ii) => {
+        let value = parseInt(env.resolve(p[0]));
+        ii.index += value;
+    }),
+    new Command("llin", (p, env, ii) => {
+        let value = parseInt(env.resolve(p[0]));
+        ii.index -= value;
+    }),
+    new Command("add", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        let res_idx = parseInt(env.resolve(p[2]));
+        res_idx.Value = value1 + value2;
+    }),
+    new Command("sub", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        let res_idx = parseInt(env.resolve(p[2]));
+        res_idx.Value = value1 - value2;
+    }),
+    new Command("mul", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        let res_idx = parseInt(env.resolve(p[2]));
+        res_idx.Value = value1 * value2;
+    }),
+    new Command("div", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        let res_idx = parseInt(env.resolve(p[2]));
+        res_idx.Value = value1 / value2;
+    }),
+    new Command("ifeq", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        if(!value1 == value2) {
+            ii.index++;
+        }
+    }),
+    new Command("iflt", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        if (!value1 < value2) {
+            ii.index++;
+        }
+    }),
+    new Command("iflq", (p, env, ii) => {
+        let value1 = parseInt(env.resolve(p[0]));
+        let value2 = parseInt(env.resolve(p[1]));
+        if (!value1 <= value2) {
+            ii.index++;
         }
     })
 ];
@@ -468,7 +521,7 @@ class Runner {
         return this.cpkg.find((v) => v.Name == Name);
     }
     callCommand(Name, Parameters) {
-        this.getCommand(Name).call(Parameters, this.env);
+        this.getCommand(Name).call(Parameters, this.env, this);
     }
     Main() {
         this.Continue();
@@ -502,6 +555,9 @@ const fs = require('fs');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
 ralloc 0
+mov &r0,10
+iflt r0,11
+mov &r0,1
 `), null, 5));
 
 /**

@@ -24,14 +24,15 @@ list of implemented flags:
 this set can, and will, change many times! 
 
 - [x] mov
-- [ ] add
-- [ ] sub
-- [ ] mul
-- [ ] div
-- [ ] ifeq
-- [ ] iflq
-- [ ] nlin
-- [ ] llin
+- [x] add
+- [x] sub
+- [x] mul
+- [x] div
+- [x] ifeq
+- [x] iflt
+- [x] iflq
+- [x] nlin
+- [x] llin
 - [ ] mload
 - [ ] import
 - [ ] tbufpsh
