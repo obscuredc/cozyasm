@@ -3,7 +3,7 @@ const Letters = "qwertyuioplkjhgfdsaxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM";
 const Symbols = ".:";
 const Whitespace = " \t";
 const idxresolve = "0123456789rmxp&";
-const StringResolve = "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM.:0123456789_ \"/\\;\',<>[]{}-+=|";
+const StringResolve = "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM.:0123456789_ \"/\\;\',<>[]{}-+=|!?()";
 
 const TT_INT = "token_int";
 const TT_SYMBOL = "token_symbol";
@@ -419,11 +419,11 @@ class ENV {
         }
     }
     createRegister() {
-        this.registers.push(new DHold(true, this.registerid, 0));
+        this.registers.push(new DHold(true, this.registerid, -1));
         this.registerid++;
     }
     createMemory() {
-        this.memory.push(new DHold(false, this.memoryid, 0));
+        this.memory.push(new DHold(false, this.memoryid, -1));
         this.memoryid++;
     }
     checkType(T) {
@@ -563,8 +563,29 @@ const defaults = [
             //parse the memory index, holding values until we come across a zero (termination).
             //then we output. (the load function will do this)
 
-            //IMPLEMENT LATER!!
+            let index = parseInt(env.resolve(p[0]).ID);
+            let values = "";
+            let mi = 0;
+            for(mi = index; mi < env.memory.length; mi++) {
+                if(env.memory[mi].Value == 0) break; //termination
+                values += String.fromCharCode(env.memory[mi].Value);
+            }
+            console.log("-> " + values)
         }
+    }),
+    new Command("mload", (p, env, ii) => {
+        let str = p[0];
+        let index = env.resolve(p[1]);
+        let mloc = index.ID;
+        let j = 0;
+        for(i = mloc; i < env.memory.length; i++) {
+            if(env.memory[i] == undefined || j == str.length) break;
+            //the user didnt allocate enough memory for the length of this string!
+            env.memory[i].Value = str[j].charCodeAt(0);
+            j++;
+        }
+        //this code appends the termination at the end.
+        env.memory[mloc + str.length].Value = 0;
     })
 ];
 const flow = [
@@ -611,6 +632,7 @@ class Runner {
         while (this.index < this.ir.length) {
             if (this.cc instanceof IR_COMMAND) {
                 if (this.getCommand(this.cc.Name) != undefined) {
+                    console.log("calling command " + this.cc.Name)
                     this.callCommand(this.cc.Name, this.cc.Parameters);
                 } else {
                     //invalid command, we'll do errors later.
@@ -645,10 +667,12 @@ function SubRun(T, cenv) {
 }
 
 const fs = require('fs');
+const { Stream } = require('stream');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
-import "std.asm"
-puts "Hello, world!"
+malloc 13
+mload "Hello, world!", &m0
+puts &m0
 end
 `), null, 5));
 

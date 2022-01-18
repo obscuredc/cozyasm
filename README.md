@@ -38,13 +38,12 @@ this set can, and will, change many times!
 - [x] iflq
 - [x] nlin
 - [x] llin
-- [ ] mload
+- [x] mload
 - [x] import
 - [x] tbufpsh
 - [x] tbufwr
 - [x] tbufcls
-- [ ] puts (modeI)
-- [ ] puts (modeII)
+- [x] puts
 - [ ] endl
 - [x] end
 - [x] load
