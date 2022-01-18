@@ -4,9 +4,9 @@ a javascript assembly-like interpreter simulator. Be warned, the current version
 ### planned
 - [x] construct IRTree generator
 - [x] normal command calls
-- [ ] create builtins
-- [ ] label jumping
-- [ ] main entry point
+- [x] create builtins
+- [x] label jumping
+- [x] main entry point
 - [ ] subroutine calls
 - [ ] subroutine parameters as registers
 - [ ] cozyasm cli

@@ -308,7 +308,7 @@ class IRBuilder2 { //organizes into functions for endl
                 this.tokens.push(FN);
             } else if (this.cc.Type == TT_FNDEXPR) {
                 //label expression, really
-                this.tokens.push(new IR_COMMAND("lbl", [ParseFN(this.cc).Name]))
+                this.tokens.push(new IR_COMMAND(new Token(TT_STRING, "lbl"), [ParseFN(this.cc).Name]))
             } else {
                 this.tokens.push(this.cc);
             }
@@ -382,21 +382,28 @@ class DHold {
     }
 }
 class ENV {
-    constructor() {
-        this.registers = [];
-        this.memory = [];
+    constructor(reg=[],mem=[],regid=0,memid=0,lbls=[],subrs=[]) {
+        this.registers = reg;
+        this.memory = mem;
 
-        this.registerid = 0;
-        this.memoryid = 0;
+        this.registerid = regid;
+        this.memoryid = memid;
 
-        this.labels = [];
-        this.subrs = [];
+        this.labels = lbls;
+        this.subrs = subrs;
+    }
+    dupsub() {
+        return new ENV(this.reg, this.mem, this.registerid, this.memoryid, [], this.subrs);
+        //remeber, sub duplicates dont carry over labels to attempt and fix label problems
     }
     getRegister(id) {
         return this.registers.find((v) => v.ID == id);
     }
     getMemory(id) {
         return this.memory.find((v) => v.ID == id);
+    }
+    getLabel(name) {
+        return this.labels.find((v) => v.Name == name);
     }
     resolve(T) {
         if (T[0] == '&') {
@@ -590,7 +597,7 @@ const defaults = [
 ];
 const flow = [
     new Command("lbl", (p, env, ii) => {
-        env.labels.push(new Label())
+        env.labels.push(new Label(p[0], ii.index));
     })
 ];
 
@@ -630,13 +637,22 @@ class Runner {
     }
     Main() {
         this.Continue();
+        //check if main label exists
+        if(this.env.getLabel("main") == undefined) {
+            //there is no main label!!
+        } else {
+            this.index = this.env.getLabel("main").Value - 1;
+            this.Continue();
+        }
         while (this.index < this.ir.length) {
             if (this.cc instanceof IR_COMMAND) {
                 if (this.getCommand(this.cc.Name) != undefined) {
                     console.log("calling command " + this.cc.Name)
                     this.callCommand(this.cc.Name, this.cc.Parameters);
                 } else {
-                    //invalid command, we'll do errors later.
+                    if(this.env.getLabel(this.cc.Name) != undefined) {
+                        this.index = this.env.getLabel(this.cc.Name).Value;
+                    }
                 }
             } else if (this.cc instanceof IR_FN) {
                 //implement later lol
@@ -645,11 +661,37 @@ class Runner {
         }
         return this.env;
     }
+    Pex() {
+        let temp = [...this.cpkg];
+        this.cpkg = [...flow];
+        this.Continue();
+        while (this.index < this.ir.length) {
+            if (this.cc instanceof IR_COMMAND) {
+                if (this.getCommand(this.cc.Name) != undefined) {
+                    console.log("calling command " + this.cc.Name)
+                    this.callCommand(this.cc.Name, this.cc.Parameters);
+                }
+                //since this is the sub function for pre-execution
+                //in resolving labels, we ignore most things.
+                //we will also push functions here eventually.
+            }
+            this.Continue();
+        }
+        //set instructions back to default.
+        this.cpkg = [...temp];
+    }
+    ResetFlow() {
+        this.index = -1;
+        this.cc = "";
+    }
 }
 
 function interpret(IR, env=new ENV()) {
     var runner = new Runner(IR, env, defaults);
-    console.log("---runtime---");
+    console.log("---pextime---\n");
+    runner.Pex();
+    console.log("---runtime---\n");
+    runner.ResetFlow();
     return runner.Main();
 }
 
@@ -666,17 +708,13 @@ function NativeRun(T) {
 function SubRun(T, cenv) {
     let IR = CompileIR(T);
     let res_env = interpret(IR, cenv);
-    return res_env;
+    return res_env.dupsub();
 }
 
 const fs = require('fs');
-const { Stream } = require('stream');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
 .main:
-    malloc 13
-    mload "Hello, world!", &m0
-    puts &m0
     end
 `), null, 5));
 
