@@ -602,7 +602,8 @@ const flow = [
 
 class Label {
     constructor(Name, Instance) {
-
+        this.Name = Name;
+        this.Value = Instance;
     }
 }
 
@@ -637,7 +638,9 @@ class Runner {
                 } else {
                     //invalid command, we'll do errors later.
                 }
-            } //aka we ignore function declarations.
+            } else if (this.cc instanceof IR_FN) {
+                //implement later lol
+            }
             this.Continue();
         }
         return this.env;
@@ -670,10 +673,11 @@ const fs = require('fs');
 const { Stream } = require('stream');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
-malloc 13
-mload "Hello, world!", &m0
-puts &m0
-end
+.main:
+    malloc 13
+    mload "Hello, world!", &m0
+    puts &m0
+    end
 `), null, 5));
 
 /**
