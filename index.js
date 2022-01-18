@@ -3,7 +3,7 @@ const Letters = "qwertyuioplkjhgfdsaxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM";
 const Symbols = ".:";
 const Whitespace = " \t";
 const idxresolve = "0123456789rmxp&";
-const StringResolve = "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM.:0123456789_ \"";
+const StringResolve = "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM.:0123456789_ \"/\\;\',<>[]{}-+=|";
 
 const TT_INT = "token_int";
 const TT_SYMBOL = "token_symbol";
@@ -35,6 +35,7 @@ class Lexer {
         this.index = -1;
         this.cc = "";
         this.tokens = [];
+        this.comment = false;
     }
     Continue() {
         this.index++;
@@ -43,23 +44,26 @@ class Lexer {
     Main() {
         this.Continue();
         while (this.index < this.text.length) {
-            if (Numbers.includes(this.cc)) this.BuildNumber();
-            else if (Whitespace.includes(this.cc)) this.Continue();
-            else if (Symbols.includes(this.cc)) {
+            if (Numbers.includes(this.cc) && this.comment == false) this.BuildNumber();
+            else if (Whitespace.includes(this.cc) && this.comment == false) this.Continue();
+            else if (Symbols.includes(this.cc) && this.comment == false) {
                 this.tokens.push(new Token(TT_SYMBOL, this.cc));
                 this.Continue();
-            } else if (this.cc == "&") this.BuildParameterLike();
-            else if (this.cc == ",") {
+            } else if (this.cc == "&" && this.comment == false) this.BuildParameterLike();
+            else if (this.cc == "," && this.comment == false) {
                 this.tokens.push(new Token(TT_ARGS, this.cc));
                 this.Continue();
+            } else if (this.cc == ";" && this.comment == false) {
+                this.comment = true
             } else if (this.cc == "\n") {
                 this.tokens.push(new Token(TT_NEWLINE, TT_NEWLINE));
+                this.comment = false;
                 this.Continue();
-            } else if(this.cc == "\"") {
+            } else if (this.cc == "\"" && this.comment == false) {
                 this.BuildStringLike();
                 this.Continue();
             }
-            else if (Letters.includes(this.cc)) this.BuildStrlike();
+            else if (Letters.includes(this.cc) && this.comment == false) this.BuildStrlike();
             else this.Continue(); //ignore anything we dont know
         }
         this.tokens.push(new Token(TT_EOF, TT_EOF));
@@ -422,6 +426,17 @@ class ENV {
         this.memory.push(new DHold(false, this.memoryid, 0));
         this.memoryid++;
     }
+    checkType(T) {
+        if(T[0] == "&") {
+            return "index";
+        } else if (T[0] == "r" || T[0] == "m") {
+            return "refrence";
+        } else if (T instanceof Number) {
+            return "const"
+        } else {
+            return "string"
+        }
+    }
 }
 class Command {
     constructor(Name, Call) {
@@ -522,8 +537,53 @@ const defaults = [
     }),
     new Command("store", (p, env, ii) => {
         env.resolve("&m" + p[0].toString()).Value = env.resolve(p[1]);
+    }),
+    new Command("end", (p, env, ii) => {
+        ii.index = ii.ir.length;
+    }),
+    new Command("tbufpsh", (p, env, ii) => {
+        ii.tbuf += String.fromCharCode(parseInt(env.resolve(p[0])))
+    }),
+    new Command("tbufwr", (p, env, ii) => {
+        console.log(ii.tbuf); //we'll make stuff standard later, esp in cli
+    }),
+    new Command("tbufcls", (p, env, ii) => {
+        ii.tbuf = "";
+    }),
+    new Command("tbufdel", (p, env, ii) => {
+        ii.tbuf = ii.tbuf.slice(0, ii.tbuf.length -2); //slices end char
+    }),
+    new Command("puts", (p, env, ii) => {
+        //this could probably be implemented in the stdlib, but, I decided to make it native.
+        //you can make a puts yourself in the assembly once the subroutine update comes out.
+        if(env.checkType(p[0]) == "string") {
+            //just output it
+            console.log("-> ", p[0].toString())
+        } else if (env.checkType(p[0]) == "index") {
+            //parse the memory index, holding values until we come across a zero (termination).
+            //then we output. (the load function will do this)
+
+            //IMPLEMENT LATER!!
+        }
     })
 ];
+const flow = [
+    new Command("lbl", (p, env, ii) => {
+        env.labels.push(new Label())
+    })
+];
+
+//NOTE ABOUT LABELS v SUBROUTINES:
+//  subroutines ALWAYS return to where they were called. labels DO NOT unless there is a specified goto
+//  subroutines are saved CROSS-FILES. labels will still be defined, but UNEXPECTED BEHAVIOR will arise!
+//  this is because the instance line number is saved to the local file, so when it jumps in the main
+//  thread, it will NOT BE WHERE YOU THINK IT WILL BE!
+
+class Label {
+    constructor(Name, Instance) {
+
+    }
+}
 
 class Runner {
     constructor(IR, env, cpkg) {
@@ -534,6 +594,7 @@ class Runner {
         this.env = env;
 
         this.cpkg = cpkg;
+        this.tbuf = "";
     }
     Continue() {
         this.index++;
@@ -563,6 +624,7 @@ class Runner {
 
 function interpret(IR, env=new ENV()) {
     var runner = new Runner(IR, env, defaults);
+    console.log("---runtime---");
     return runner.Main();
 }
 
@@ -585,7 +647,9 @@ function SubRun(T, cenv) {
 const fs = require('fs');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
-import "ex"
+import "std.asm"
+puts "Hello, world!"
+end
 `), null, 5));
 
 /**

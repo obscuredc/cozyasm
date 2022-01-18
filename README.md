@@ -1,5 +1,5 @@
 # cozyasm
-a javascript assembly-like interpreter simulator. Be warned, the current versions have **no/minimal** error catching and safety nets.
+a javascript assembly-like interpreter simulator. Be warned, the current versions have **no/minimal** error catching and safety nets. status: **NOT PRODUCTION READY**
 
 ### planned
 - [x] construct IRTree generator
@@ -12,7 +12,7 @@ a javascript assembly-like interpreter simulator. Be warned, the current version
 - [ ] cozyasm cli
 - [ ] make documentation
 ### list of supported compiled languages
-to compile to a language, use the cozyasm cli with the `--compile=NAME` flag. (not implemented). This list is subject to change, especially if the assmebly languages chosen are not able to be compiled (they are missing key features). Also note all commands are not portable to all languages, especially `nlin`, `llin`, and `puts`. (although puts could be implemented in a form of std library for the language).
+to compile to a language, use the cozyasm cli with the `--compile=NAME` flag. (not implemented). This list is subject to change, especially if the assembly languages chosen are not able to be compiled (they are missing key features). Also note all commands are not portable to all languages, especially `nlin`, `llin`, and `puts`. (although puts could be implemented in a form of std library for the language).
 
 - [ ] [lux](https://github.com/obscuredc/lux)
 - [ ] also see the [planned list](https://github.com/stars/obscuredc/lists/assembly-emulators).
@@ -40,13 +40,13 @@ this set can, and will, change many times!
 - [x] llin
 - [ ] mload
 - [x] import
-- [ ] tbufpsh
-- [ ] tbufwr
-- [ ] tbufcls
+- [x] tbufpsh
+- [x] tbufwr
+- [x] tbufcls
 - [ ] puts (modeI)
 - [ ] puts (modeII)
 - [ ] endl
-- [ ] end
+- [x] end
 - [x] load
 - [x] store
 - [x] rad
