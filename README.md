@@ -7,7 +7,7 @@ a javascript assembly-like interpreter simulator. Be warned, the current version
 - [x] create builtins
 - [x] label jumping
 - [x] main entry point
-- [ ] subroutine calls
+- [x] subroutine calls
 - [ ] subroutine parameters as registers
 - [ ] cozyasm cli
 - [ ] make documentation
@@ -24,6 +24,7 @@ list of implemented flags:
 
 ### known errors
 - [ ] import infinite loops
+- [ ] not enough error logging
 
 ### instruction set
 this set can, and will, change many times! 
@@ -44,7 +45,7 @@ this set can, and will, change many times!
 - [x] tbufwr
 - [x] tbufcls
 - [x] puts
-- [ ] endl
+- [x] endl --*limited*
 - [x] end
 - [x] load
 - [x] store

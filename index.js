@@ -19,6 +19,15 @@ const TT_NORMALEXPR = "a normal statement";
 const TT_FNDEXPR = "a function declare statment";
 const TT_FNDAEXPR = "a function delcare statment with args";
 
+let std = {};
+std.log = (Message) => {    //std.log should only be used for output the user
+    console.log(Message);   //or client will see. for compiler/interpreter info
+}                           //messages, see std.info().
+std.genlogs = "";
+std.info = (Message) => {
+    std.genlogs += Message + "\n";
+}
+
 class Token {
     constructor(Type, Value) {
         this.Type = Type;
@@ -342,28 +351,28 @@ class IR_FN {
 function CompileIR(T) {
     var lexer = new Lexer(T);
     var tokens = lexer.Main();
-    console.log("---tokens---\n")
-    tokens.forEach((v) => { console.log(v.toString()) })
+    std.info("---tokens---\n")
+    tokens.forEach((v) => { std.info(v.toString()) })
     var nonidxscanner = new ParameterNonIndexScanner(tokens);
     var nist = nonidxscanner.Main();
-    console.log("---nisted tokens---\n")
-    nist.forEach((v) => { console.log(v.toString()) })
+    std.info("---nisted tokens---\n")
+    nist.forEach((v) => { std.info(v.toString()) })
     var liner = new Liner(nist);
     var lined_tokens = liner.Main();
-    console.log("---lined tokens---\n")
-    lined_tokens.forEach((v) => { console.log(v.toString()) })
+    std.info("---lined tokens---\n")
+    lined_tokens.forEach((v) => { std.info(v.toString()) })
     var lineassigner = new LineAssigner(lined_tokens);
     var lined_tokens = lineassigner.Main();
-    console.log("---formatted lined tokens---\n");
-    lined_tokens.forEach((v) => { console.log(v.toString()) })
+    std.info("---formatted lined tokens---\n");
+    lined_tokens.forEach((v) => { std.info(v.toString()) })
     var ir1 = new IRBuilder1(lined_tokens);
     var ir1_tok = ir1.Main();
-    console.log("---ir1 tokens---\n");
-    ir1_tok.forEach((v) => { console.log(v.toString()) })
+    std.info("---ir1 tokens---\n");
+    ir1_tok.forEach((v) => { std.info(v.toString()) })
     var ir2 = new IRBuilder2(ir1_tok);
     var ir2_tok = ir2.Main();
-    console.log("---ir2 tokens---\n");
-    ir2_tok.forEach((v) => { console.log(v.toString()) })
+    std.info("---ir2 tokens---\n");
+    ir2_tok.forEach((v) => { std.info(v.toString()) })
 
     for(const c of ir2_tok) {
         if(c instanceof IR_COMMAND) {
@@ -404,6 +413,9 @@ class ENV {
     }
     getLabel(name) {
         return this.labels.find((v) => v.Name == name);
+    }
+    getFN(name) {
+        return this.subrs.find((v) => v.Name == name);
     }
     resolve(T) {
         if (T[0] == '&') {
@@ -532,9 +544,11 @@ const defaults = [
     new Command("import", (p, env, ii) => {
         let filename = p[0]; //const::String s cannot be resolved
         let content = "callasImport\n" + fs.readFileSync(filename, "utf-8");
-        console.log(content[content.length -1])
         if(content[content.length - 1] != "\n") content += "\n"; //hacky solution lol
+        std.info("MOVI to " + filename)
+        std.info("WRAP [")
         env = SubRun(content, env);
+        std.info("] ENDWRAP")
     }),
     new Command("callasImport", (p, env, ii) => {
         //this does nothing. it just placeholds.
@@ -552,7 +566,7 @@ const defaults = [
         ii.tbuf += String.fromCharCode(parseInt(env.resolve(p[0])))
     }),
     new Command("tbufwr", (p, env, ii) => {
-        console.log(ii.tbuf); //we'll make stuff standard later, esp in cli
+        std.log(ii.tbuf); //we'll make stuff standard later, esp in cli
     }),
     new Command("tbufcls", (p, env, ii) => {
         ii.tbuf = "";
@@ -565,7 +579,7 @@ const defaults = [
         //you can make a puts yourself in the assembly once the subroutine update comes out.
         if(env.checkType(p[0]) == "string") {
             //just output it
-            console.log("-> ", p[0].toString())
+            std.log(p[0].toString())
         } else if (env.checkType(p[0]) == "index") {
             //parse the memory index, holding values until we come across a zero (termination).
             //then we output. (the load function will do this)
@@ -577,7 +591,7 @@ const defaults = [
                 if(env.memory[mi].Value == 0) break; //termination
                 values += String.fromCharCode(env.memory[mi].Value);
             }
-            console.log("-> " + values)
+            std.log(values)
         }
     }),
     new Command("mload", (p, env, ii) => {
@@ -593,6 +607,9 @@ const defaults = [
         }
         //this code appends the termination at the end.
         env.memory[mloc + str.length].Value = 0;
+    }),
+    new Command("endl", (p, env, ii) => {
+        //PLACEHOLDER ALSO
     })
 ];
 const flow = [
@@ -640,22 +657,39 @@ class Runner {
         //check if main label exists
         if(this.env.getLabel("main") == undefined) {
             //there is no main label!!
+            std.info("WARN no main label found")
         } else {
             this.index = this.env.getLabel("main").Value - 1;
             this.Continue();
+            std.info("GET main lbl")
         }
         while (this.index < this.ir.length) {
             if (this.cc instanceof IR_COMMAND) {
                 if (this.getCommand(this.cc.Name) != undefined) {
-                    console.log("calling command " + this.cc.Name)
+                    std.info("calling command " + this.cc.Name)
                     this.callCommand(this.cc.Name, this.cc.Parameters);
                 } else {
                     if(this.env.getLabel(this.cc.Name) != undefined) {
-                        this.index = this.env.getLabel(this.cc.Name).Value;
+                        this.index = this.env.getLabel(this.cc.Name).Value -1;
+                    } else if(this.env.getFN(this.cc.Name) != undefined) {
+                        //run command
+                        let fn = this.env.getFN(this.cc.Name);
+                        let tok = fn.Callstack;
+                        tok.unshift(new IR_COMMAND(new Token(TT_STRING, "lbl"), ["main"]))
+                        for (const c of tok) {
+                            if (c instanceof IR_COMMAND) {
+                                c.Name = c.Name.Value;
+                            }
+                        }
+                        std.info("SUBCALL WRAP " + this.cc.Name + " [")
+                        this.env = SubRunSkip(tok, this.env);
+                        std.info("] END SUBCALL WRAP")
                     }
                 }
             } else if (this.cc instanceof IR_FN) {
-                //implement later lol
+                //ignore because we already pushed
+                //functions to the enviorment and they are called
+                //in the IR_COMMAND
             }
             this.Continue();
         }
@@ -668,12 +702,14 @@ class Runner {
         while (this.index < this.ir.length) {
             if (this.cc instanceof IR_COMMAND) {
                 if (this.getCommand(this.cc.Name) != undefined) {
-                    console.log("calling command " + this.cc.Name)
+                    std.info("calling command " + this.cc.Name)
                     this.callCommand(this.cc.Name, this.cc.Parameters);
                 }
                 //since this is the sub function for pre-execution
                 //in resolving labels, we ignore most things.
                 //we will also push functions here eventually.
+            } else if (this.cc instanceof IR_FN) {
+                this.env.subrs.push(this.cc);
             }
             this.Continue();
         }
@@ -688,9 +724,9 @@ class Runner {
 
 function interpret(IR, env=new ENV()) {
     var runner = new Runner(IR, env, defaults);
-    console.log("---pextime---\n");
+    std.info("---pextime---\n");
     runner.Pex();
-    console.log("---runtime---\n");
+    std.info("---runtime---\n");
     runner.ResetFlow();
     return runner.Main();
 }
@@ -707,15 +743,30 @@ function NativeRun(T) {
 
 function SubRun(T, cenv) {
     let IR = CompileIR(T);
+    let saved_labels = [...cenv.labels];
+    cenv.labels = [];
     let res_env = interpret(IR, cenv);
-    return res_env.dupsub();
+    res_env = res_env.dupsub();
+    let new_env = new ENV(res_env.registers, res_env.memory, res_env.registerid, res_env.memoryid, saved_labels, res_env.subrs);
+    return new_env;
+}
+
+function SubRunSkip(T, cenv) {
+    let IR = T;
+    let saved_labels = [...cenv.labels];
+    cenv.labels = [];
+    let res_env = interpret(IR, cenv);
+    res_env = res_env.dupsub();
+    let new_env = new ENV(res_env.registers, res_env.memory, res_env.registerid, res_env.memoryid, saved_labels, res_env.subrs);
+    return new_env;
 }
 
 const fs = require('fs');
 
 fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
 .main:
-    end
+    import "std.asm"
+    HelloWorld
 `), null, 5));
 
 /**
