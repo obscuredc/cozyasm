@@ -25,7 +25,7 @@ std.log = (Message) => {    //std.log should only be used for output the user
 }                           //messages, see std.info().
 std.genlogs = "";
 std.info = (Message) => {
-    std.genlogs += Message + "\n";
+    std.genlogs = std.genlogs + Message + "\n";
 }
 
 class Token {
@@ -763,12 +763,18 @@ function SubRunSkip(T, cenv) {
 
 const fs = require('fs');
 
-fs.writeFileSync("./dump", JSON.stringify(NativeRun(`
+let env = NativeRun(`
 .main:
     import "std.asm"
     HelloWorld
-`), null, 5));
+`)
 
+fs.writeFileSync("./dump", JSON.stringify(
+    {
+        env: env,
+        logs: std.genlogs
+    }
+, null, 5));
 /**
  * 
  * .NAME: -> LABELS
