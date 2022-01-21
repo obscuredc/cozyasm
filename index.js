@@ -507,36 +507,34 @@ const defaults = [
     }),
     new Command("nlin", (p, env, ii) => {
         let value = parseInt(env.resolve(p[0]));
-        ii.index += (value+1);
-        ii.Continue()
+        ii.index += (value);
     }),
     new Command("llin", (p, env, ii) => {
         let value = parseInt(env.resolve(p[0]));
-        ii.index -= (value);
-        ii.Continue()
+        ii.index -= (2+value);
     }),
     new Command("add", (p, env, ii) => {
         let value1 = parseInt(env.resolve(p[0]));
         let value2 = parseInt(env.resolve(p[1]));
-        let res_idx = parseInt(env.resolve(p[2]));
+        let res_idx = env.resolve(p[2]);
         res_idx.Value = value1 + value2;
     }),
     new Command("sub", (p, env, ii) => {
         let value1 = parseInt(env.resolve(p[0]));
         let value2 = parseInt(env.resolve(p[1]));
-        let res_idx = parseInt(env.resolve(p[2]));
+        let res_idx = env.resolve(p[2]);
         res_idx.Value = value1 - value2;
     }),
     new Command("mul", (p, env, ii) => {
         let value1 = parseInt(env.resolve(p[0]));
         let value2 = parseInt(env.resolve(p[1]));
-        let res_idx = parseInt(env.resolve(p[2]));
+        let res_idx = env.resolve(p[2]);
         res_idx.Value = value1 * value2;
     }),
     new Command("div", (p, env, ii) => {
         let value1 = parseInt(env.resolve(p[0]));
         let value2 = parseInt(env.resolve(p[1]));
-        let res_idx = parseInt(env.resolve(p[2]));
+        let res_idx = env.resolve(p[2]);
         res_idx.Value = value1 / value2;
     }),
     new Command("ifeq", (p, env, ii) => {
@@ -549,8 +547,8 @@ const defaults = [
     new Command("iflt", (p, env, ii) => {
         let value1 = parseInt(env.resolve(p[0]));
         let value2 = parseInt(env.resolve(p[1]));
-        if (!value1 < value2) {
-            ii.index++;
+        if (!(value1 < value2)) {
+            ii.index += 1;
         }
     }),
     new Command("iflq", (p, env, ii) => {
@@ -602,10 +600,10 @@ const defaults = [
     new Command("puts", (p, env, ii) => {
         //this could probably be implemented in the stdlib, but, I decided to make it native.
         //you can make a puts yourself in the assembly once the subroutine update comes out.
-        if(env.checkType(p[0]) == "string" || env.checkType(p[0] == "refrence")) {
+        if (env.checkType(p[0]) == "string" || env.checkType(p[0]) == "refrence") {
             //just output it
-            if (env.checkType(p[0]) == "refrence") p[0] = env.resolve(p[0]);
-            std.log(p[0].toString())
+            if (env.checkType(p[0]) == "refrence") std.log(env.resolve(p[0]));
+            else std.log(p[0].toString())
         } else if (env.checkType(p[0]) == "index") {
             //parse the memory index, holding values until we come across a zero (termination).
             //then we output. (the load function will do this)
@@ -704,13 +702,13 @@ class Runner {
             std.info("GET main lbl")
         }
         while (this.index < this.ir.length) {
-            console.log(this.index);
             if (this.cc instanceof IR_COMMAND) {
                 if (this.getCommand(this.cc.Name) != undefined) {
                     std.info("calling command " + this.cc.Name + " with params:")
                     this.cc.Parameters.forEach((v) => {
-                        std.info(this.env.resolve(v));
+                        std.info((v));
                     })
+                    std.info("calling " + this.cc.Name + " at index" + this.index);
                     this.callCommand(this.cc.Name, this.cc.Parameters);
                 } else {
                     if(this.env.getLabel(this.cc.Name) != undefined) {
@@ -811,11 +809,11 @@ function SubRunSkip(T, cenv, params, fn) {
 }
 
 const fs = require('fs');
+const { waitForDebugger } = require('inspector');
 
 let env = NativeRun(`
 .main:
     import "std.asm"
-    testiii
 `)
 
 fs.writeFileSync("./dump", JSON.stringify(
