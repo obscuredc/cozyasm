@@ -808,22 +808,13 @@ function SubRunSkip(T, cenv, params, fn) {
     return new_env;
 }
 
-const fs = require('fs');
-
-let env = NativeRun(`
-.main:
-    import "cli/.asm"
-`)
-
-fs.writeFileSync("./dump", JSON.stringify(
-    {
-        env: env,
-        logs: std.genlogs
-    }
-, null, 5));
-
-if(process.argv.includes("--logs")) {
-    console.log(std.genlogs);
+module.exports = {
+    interpret: (Text) => {
+        return [NativeRun(Text), std.genlogs]
+    },
+    ENV: ENV,
+    getlogs: () => { return std.genlogs },
+    clslogs: () => { std.genlogs = "" }
 }
 /**
  * 
