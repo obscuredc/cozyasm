@@ -8,7 +8,7 @@ a javascript assembly-like interpreter simulator. Be warned, the current version
 - [x] label jumping
 - [x] main entry point
 - [x] subroutine calls
-- [ ] subroutine parameters as registers
+- [x] subroutine parameters as registers
 - [ ] cozyasm cli
 - [ ] make documentation
 ### list of supported compiled languages
@@ -45,7 +45,7 @@ this set can, and will, change many times!
 - [x] tbufwr
 - [x] tbufcls
 - [x] puts
-- [x] endl --*limited*
+- [x] endl
 - [x] end
 - [x] load
 - [x] store

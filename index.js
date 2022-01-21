@@ -389,11 +389,18 @@ class DHold {
         this.ID = id;
         this.Value = Value;
     }
+    dup() {
+        return new DHold(this.isRegister, this.ID, this.Value);
+    }
 }
 class ENV {
     constructor(reg=[],mem=[],regid=0,memid=0,lbls=[],subrs=[]) {
         this.registers = reg;
         this.memory = mem;
+        this.tempregs = [];
+        this.xregs = [];
+
+        this.depnet = null;
 
         this.registerid = regid;
         this.memoryid = memid;
@@ -402,11 +409,17 @@ class ENV {
         this.subrs = subrs;
     }
     dupsub() {
-        return new ENV(this.reg, this.mem, this.registerid, this.memoryid, [], this.subrs);
+        return new ENV(this.registers, this.memory, this.registerid, this.memoryid, [], this.subrs);
         //remeber, sub duplicates dont carry over labels to attempt and fix label problems
     }
     getRegister(id) {
         return this.registers.find((v) => v.ID == id);
+    }
+    getPRegister(id) {
+        return this.tempregs.find((v) => v.ID == id);
+    }
+    getXRegister(id) {
+        return this.xregs.find((v) => v.ID == id);
     }
     getMemory(id) {
         return this.memory.find((v) => v.ID == id);
@@ -425,13 +438,21 @@ class ENV {
                     return this.getRegister(parseInt(T.substr(2, T.length - 1)))
                 case "m":
                     return this.getMemory(parseInt(T.substr(2, T.length - 1)))
+                case "p":
+                    return this.getPRegister(parseInt(T.substr(2, T.length - 1)))
+                case "x":
+                    return this.getXRegister(parseInt(T.substr(2, T.length - 1)))
             }
-        } else if (T[0] == "r" || T[0] == "m") {
+        } else if (T[0] == "r" || T[0] == "m" || T[0] == "p" || T[0] == "x") {
             switch (T[0]) {
                 case "r":
                     return this.getRegister(parseInt(T.substr(1, T.length - 1))).Value;
                 case "m":
                     return this.getMemory(parseInt(T.substr(1, T.length - 1))).Value;
+                case "p":
+                    return this.getPRegister(parseInt(T.substr(1, T.length - 1))).Value;
+                case "x":
+                    return this.getXRegister(parseInt(T.substr(1, T.length - 1))).Value;
             }
         } else {
             return parseInt(T);
@@ -448,7 +469,7 @@ class ENV {
     checkType(T) {
         if(T[0] == "&") {
             return "index";
-        } else if (T[0] == "r" || T[0] == "m") {
+        } else if (T[0] == "r" || T[0] == "m" || T[0] == "p" || T[0] == "x") {
             return "refrence";
         } else if (T instanceof Number) {
             return "const"
@@ -474,6 +495,7 @@ const defaults = [
             env.createRegister();
             i++;
         }
+        env.depnet = env.registers[env.registers.length - 1].dup()
     }),
     new Command("malloc", (p, env, ii) => {
         var i = 0;
@@ -481,14 +503,17 @@ const defaults = [
             env.createMemory();
             i++;
         }
+        env.depnet = env.memory[env.memory.length -1].dup() //newest created one
     }),
     new Command("nlin", (p, env, ii) => {
         let value = parseInt(env.resolve(p[0]));
-        ii.index += value;
+        ii.index += (value+1);
+        ii.Continue()
     }),
     new Command("llin", (p, env, ii) => {
         let value = parseInt(env.resolve(p[0]));
-        ii.index -= value;
+        ii.index -= (value);
+        ii.Continue()
     }),
     new Command("add", (p, env, ii) => {
         let value1 = parseInt(env.resolve(p[0]));
@@ -577,8 +602,9 @@ const defaults = [
     new Command("puts", (p, env, ii) => {
         //this could probably be implemented in the stdlib, but, I decided to make it native.
         //you can make a puts yourself in the assembly once the subroutine update comes out.
-        if(env.checkType(p[0]) == "string") {
+        if(env.checkType(p[0]) == "string" || env.checkType(p[0] == "refrence")) {
             //just output it
+            if (env.checkType(p[0]) == "refrence") p[0] = env.resolve(p[0]);
             std.log(p[0].toString())
         } else if (env.checkType(p[0]) == "index") {
             //parse the memory index, holding values until we come across a zero (termination).
@@ -592,6 +618,8 @@ const defaults = [
                 values += String.fromCharCode(env.memory[mi].Value);
             }
             std.log(values)
+        } else if (env.checkType(p[0]) == "const") {
+            std.log(p[0].toString());
         }
     }),
     new Command("mload", (p, env, ii) => {
@@ -609,7 +637,19 @@ const defaults = [
         env.memory[mloc + str.length].Value = 0;
     }),
     new Command("endl", (p, env, ii) => {
-        //PLACEHOLDER ALSO
+        env.tempregs = [];
+        env.xregs = [];
+    }),
+    new Command("dep", (p, env, ii) => {
+        let t = new DHold(true, env.resolve(p[0]), env.depnet.dup().Value);
+        t.origin = env.depnet.dup().ID;
+        env.xregs.push(t);
+    }),
+    new Command("depf", (p, env, ii) => {
+        let idx = env.resolve(p[0]);
+        let loc = idx.origin + 0;
+        let reg = env.getRegister(loc);
+        reg.Value = idx.dup().Value;
     })
 ];
 const flow = [
@@ -664,9 +704,13 @@ class Runner {
             std.info("GET main lbl")
         }
         while (this.index < this.ir.length) {
+            console.log(this.index);
             if (this.cc instanceof IR_COMMAND) {
                 if (this.getCommand(this.cc.Name) != undefined) {
-                    std.info("calling command " + this.cc.Name)
+                    std.info("calling command " + this.cc.Name + " with params:")
+                    this.cc.Parameters.forEach((v) => {
+                        std.info(this.env.resolve(v));
+                    })
                     this.callCommand(this.cc.Name, this.cc.Parameters);
                 } else {
                     if(this.env.getLabel(this.cc.Name) != undefined) {
@@ -682,7 +726,7 @@ class Runner {
                             }
                         }
                         std.info("SUBCALL WRAP " + this.cc.Name + " [")
-                        this.env = SubRunSkip(tok, this.env);
+                        this.env = SubRunSkip(tok, this.env, this.cc.Parameters, fn);
                         std.info("] END SUBCALL WRAP")
                     }
                 }
@@ -751,10 +795,15 @@ function SubRun(T, cenv) {
     return new_env;
 }
 
-function SubRunSkip(T, cenv) {
+function SubRunSkip(T, cenv, params, fn) {
     let IR = T;
     let saved_labels = [...cenv.labels];
     cenv.labels = [];
+    let i = 0;
+    while (i < params.length && i < fn.P + 1) {
+        cenv.tempregs.push(new DHold(true, i, params[i]));
+        i++;
+    }
     let res_env = interpret(IR, cenv);
     res_env = res_env.dupsub();
     let new_env = new ENV(res_env.registers, res_env.memory, res_env.registerid, res_env.memoryid, saved_labels, res_env.subrs);
@@ -766,7 +815,7 @@ const fs = require('fs');
 let env = NativeRun(`
 .main:
     import "std.asm"
-    HelloWorld
+    testiii
 `)
 
 fs.writeFileSync("./dump", JSON.stringify(
@@ -775,6 +824,10 @@ fs.writeFileSync("./dump", JSON.stringify(
         logs: std.genlogs
     }
 , null, 5));
+
+if(process.argv.includes("--logs")) {
+    console.log(std.genlogs);
+}
 /**
  * 
  * .NAME: -> LABELS
