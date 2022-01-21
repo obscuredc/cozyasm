@@ -808,6 +808,8 @@ function SubRunSkip(T, cenv, params, fn) {
     return new_env;
 }
 
+const fs = require("fs");
+
 module.exports = {
     interpret: (Text) => {
         return [NativeRun(Text), std.genlogs]
